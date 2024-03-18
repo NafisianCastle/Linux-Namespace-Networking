@@ -1,14 +1,14 @@
 sudo apt install iproute2 net-tools iputils-ping iptables
 
-#create namespace
+# create namespace
 sudo ip netns add red
 
 sudo ip netns add green
 
-#check created namespace
+# check created namespace
 ip netns
 
-#create bride, set ip and state up
+# create bride, set ip and state up
 sudo ip link add br0 type bridge
 
 sudo ip addr add 192.168.0.1/16 dev br0
@@ -17,7 +17,7 @@ sudo ip link set br0 up
 
 ip link list
 
-#create virtual ethernet(veth)
+# create virtual ethernet(veth)
 sudo ip link add veth0 type veth peer name veth-red
 
 sudo ip link add veth1 type veth peer name veth-green
