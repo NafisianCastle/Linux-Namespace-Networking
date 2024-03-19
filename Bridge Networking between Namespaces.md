@@ -1,117 +1,78 @@
+# Prerequisites
+sudo apt update
+
+sudo apt upgrade -y
+
 sudo apt install iproute2 net-tools iputils-ping iptables
+# Create a Linux bridge:
+sudo ip link add dev v-net type bridge
+
+sudo ip link set dev v-net up
+
+# Assign an IP address to the bridge interface 'v-net':
+sudo ip address add 10.0.0.1/24 dev v-net
 
 # create namespace
 
-sudo ip netns add red
+sudo ip netns add red-ns
 
-sudo ip netns add green
+sudo ip netns add green-ns
 
-# check created namespace
+### check created namespace
 
-ip netns
+sudo ip netns list
 
-# create bride, set ip and state up
+# Create virtual Ethernet pairs:
+sudo ip link add veth-green-ns type veth peer name veth-green-br
 
-sudo ip link add br0 type bridge
+sudo ip link add veth-red-ns type veth peer name veth-red-br
 
-sudo ip addr add 192.168.0.1/16 dev br0
+# Move each end of veth cable to a different namespace:
+sudo ip link set dev veth-green-ns netns green-ns
 
-sudo ip link set br0 up
+sudo ip link set dev veth-red-ns netns red-ns
 
-ip link list
+# Add the other end of the virtual interfaces to the bridge:
+sudo ip link set dev veth-green-br master v-net
 
-# create virtual ethernet(veth)
+sudo ip link set dev veth-red-br master v-net
 
-sudo ip link add veth0 type veth peer name veth-red
+# Set the bridge interfaces up:
+sudo ip link set dev veth-green-br up
 
-sudo ip link add veth1 type veth peer name veth-green
+sudo ip link set dev veth-red-br up
 
-# associated veth ends to different namespace and bridge
+# Set the namespace interfaces up:
+sudo ip netns exec green-ns ip link set dev veth-green-ns up
+sudo ip netns exec red-ns ip link set dev veth-red-ns up
 
-sudo ip link set veth0 master br0
+# Assign IP addresses to the virtual interfaces within each namespace and set the default routes:
+sudo ip netns exec green-ns ip address add 10.0.0.11/24 dev veth-green-ns
+sudo ip netns exec green-ns ip route add default via 10.0.0.1
 
-sudo ip link set veth1 master br0
+sudo ip netns exec red-ns ip address add 10.0.0.21/24 dev veth-red-ns
+sudo ip netns exec red-ns ip route add default via 10.0.0.1
 
-sudo ip link set veth-red netns red
+#  Firewall rules:
+sudo iptables --append FORWARD --in-interface v-net --jump ACCEPT
 
-sudo ip link set veth-green netns green
+sudo iptables --append FORWARD --out-interface v-net --jump ACCEPT
 
+# Test Connectivity
+sudo ip netns exec red-ns ping -c 2 10.0.0.11
+sudo ip netns exec green-ns ping -c 2 10.0.0.21
 
-# Change veth ends state
-
-sudo ip netns exec red ip link set veth-red up
-
-sudo ip netns exec green ip link set veth-green up
-
-ip link list
-
-sudo ip link set veth0 up
-
-sudo ip link set veth1 up
-
-ip link list
-
-# Change lo of both namespaces' state
-sudo ip netns exec red ip link set lo up
-
-sudo ip netns exec green ip link set lo up
-
-sudo ip netns exec green ip link list
-
-# assign ip address to veth in red namespace
-
-sudo ip netns exec red ip addr add 192.168.0.2/16 dev veth-red
-
-# ping 192.168.0.2 from host and from within red
-ping -c 2 192.168.0.2 //succesfull 
-
-sudo ip netns exec red ping -c 2 192.168.0.2 //succesfull
-
-# ping to host ip from red namespace
-sudo ip netns exec red ip route add default via 192.168.0.1
-
-sudo ip netns exec red bash
-
-route -n // check route table
-
-ip addr show eth0 //from another terminal
-
-ping -c 2 10.42.1.146 // successful
 
 # ping google public DNS from red namespace
-//change iptables rule sudo iptables -t nat -A POSTROUTING -s 192.168.0.0/16 -j MASQUERADE
-sudo ip netns exec red bash
+
+//change iptables rule 
+sudo iptables -t nat -A POSTROUTING -s 192.168.0.0/16 -j MASQUERADE
+
+sudo ip netns exec red-ns bash
 
 ping -c 2 8.8.8.8 //successful
 
-# do the same for green namespace
-sudo ip netns exec green bash
+sudo ip netns exec green-ns bash
 
-ip link list
-
-ip link set lo up
-
-ip addr show veth-green
-
-ip addr add 192.168.0.3/16 dev veth-green
-
-# ping veth-green within green namespace, to bridge and host
-ping -c 2 192.168.0.3 // successful
-
-ping -c 2 192.168.0.1 // successful
-
-ping -c 2 10.42.1.146 // successful
-route
-
-# add a route for green namespace too
-ip route add default via 192.168.0.1 route
-
-ping -c 2 10.42.1.146 // successful
-
-# ping to red namespace veth end and google DNS
-ping -c 2 192.168.0.2 // successful
-
-ip addr show
-
-ping -c 2 8.8.8.8
+ping -c 2 8.8.8.8 //successful
 
