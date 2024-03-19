@@ -44,13 +44,16 @@ sudo ip link set dev veth-red-br up
 
 # Set the namespace interfaces up:
 sudo ip netns exec green-ns ip link set dev veth-green-ns up
+
 sudo ip netns exec red-ns ip link set dev veth-red-ns up
 
 # Assign IP addresses to the virtual interfaces within each namespace and set the default routes:
 sudo ip netns exec green-ns ip address add 10.0.0.11/24 dev veth-green-ns
+
 sudo ip netns exec green-ns ip route add default via 10.0.0.1
 
 sudo ip netns exec red-ns ip address add 10.0.0.21/24 dev veth-red-ns
+
 sudo ip netns exec red-ns ip route add default via 10.0.0.1
 
 #  Firewall rules:
@@ -60,6 +63,7 @@ sudo iptables --append FORWARD --out-interface v-net --jump ACCEPT
 
 # Test Connectivity
 sudo ip netns exec red-ns ping -c 2 10.0.0.11
+
 sudo ip netns exec green-ns ping -c 2 10.0.0.21
 
 
