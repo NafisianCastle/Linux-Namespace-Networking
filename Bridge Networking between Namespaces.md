@@ -71,7 +71,7 @@ sudo ip netns exec green-ns ping -c 2 10.0.0.21
 
 ### change iptables rule 
 
-sudo iptables -t nat -A POSTROUTING -s 192.168.0.0/16 -j MASQUERADE
+sudo iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -j MASQUERADE
 
 sudo ip netns exec red-ns bash
 
